@@ -2,7 +2,7 @@
 **Authors:** Michał Szachniewicz [(szacho)](https://github.com/szacho), Anna Klimiuk [(Stardust87)](https://github.com/Stardust87)
 
 This project automates the process of extracting a basketball trajectory from a video. It saves results and creates a pretty visualization:
-![visualization of detected trajectory]()
+![visualization of detected trajectory](https://raw.githubusercontent.com/szacho/basketball-detection/main/assets/output_123629AA.gif)
 
 The algorithm used for object detection is YOLO, forked from https://github.com/ultralytics/yolov5. It has been trained on a custom dataset of privately recorded videos. The whole process is automated and it can handle a directory of videos one by one. 
 
@@ -19,5 +19,5 @@ Full results are available in the *yolo_analysis* notebook. In short: prediction
 
 Below are grouped per scenery and per category boxplots of IoU and distance error on the test set. 
 
-![boxplot grouped by scenery]()
-![boxplot grouped by category]()
+![boxplot grouped by scenery](https://raw.githubusercontent.com/szacho/basketball-detection/main/assets/boxplots_scenery.png)
+![boxplot grouped by category](https://raw.githubusercontent.com/szacho/basketball-detection/main/assets/boxplots_category.png)
