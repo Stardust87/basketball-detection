@@ -1,0 +1,20 @@
+{
+    "videos_path": "data/datasets/test/",
+    "stages": [0],
+    "detection": {
+        "model_weights": false,
+        "image_size": false,
+        "sampling": 20
+    },
+    "drawing": {
+        "min_confidence": 0.65,
+        "max_distance": 120,
+        "style": "fast",
+        "tail": -1,
+        "smoothing": false
+    },
+    "output": {
+        "fps": 60,
+        "clean_data": false
+    }
+}
