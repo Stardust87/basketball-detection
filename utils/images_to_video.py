@@ -1,31 +1,23 @@
+from pathlib import Path
+
 import cv2
-import numpy as np
-import glob
 from tqdm import tqdm
 
 
+def convert_to_video(images_path: Path, output_path: Path, fps: int = 240) -> None:
+    filenames = images_path.glob("*.jpg")
+    filenames = sorted(filenames, key=lambda x: int(x.stem))
 
-def convert_to_video(images_path, output_path, fps=240):
-    img_array = []
-    filenames = list(glob.glob(f'{images_path}/*.jpg'))
-    filenames.sort(key=lambda x: int(x.split('/')[-1].split('.')[0][4:]))
+    img = cv2.imread(str(filenames[0]))
+    height, width, _ = img.shape
+    out = cv2.VideoWriter(
+        str(output_path), cv2.VideoWriter_fourcc(*"DIVX"), fps, (width, height)
+    )
+
     progress_bar = tqdm(filenames)
     for filename in progress_bar:
         progress_bar.set_description("Making a video")
-        img = cv2.imread(filename)
-        height, width, layers = img.shape
-        size = (width,height)
-        img_array.append(img)
-    
+        img = cv2.imread(str(filename))
+        out.write(img)
 
-    out = cv2.VideoWriter(output_path, cv2.VideoWriter_fourcc(*'DIVX'), fps, size)
-    
-    for i in range(len(img_array)):
-        out.write(img_array[i])
     out.release()
-
-if __name__ == "__main__":
-
-    VIDEO_NAME = 'michal1'
-    OUTPUT_PATH = f'data/{VIDEO_NAME}/'
-    convert_to_video(VIDEO_NAME,OUTPUT_PATH )

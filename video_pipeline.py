@@ -1,57 +1,109 @@
-from utils import convert_to_video, convert_to_images, draw_trajectories
-import os, json
-import glob
+import argparse
 import shutil
+import subprocess
+from pathlib import Path
 
-def process_video(path, cfg):
-    STAGES = cfg['stages']
+import numpy as np
 
-    video_dir = path.split('.')[0]
-    video_name = video_dir.split('/')[-1]
-    images_raw_path = f'{video_dir}/images_raw'
-    images_draw_path = f'{video_dir}/images_draw'
-    if not os.path.exists(video_dir): os.makedirs(video_dir)
-    if not os.path.exists(images_raw_path): os.makedirs(images_raw_path)
-    if not os.path.exists(images_draw_path): os.makedirs(images_draw_path)
-    
+from utils import convert_to_images, convert_to_video, draw_trajectory
+
+
+def process_video(
+    video_path: Path,
+    output_path: Path,
+    device: str,
+    fps: int,
+    clean: bool,
+) -> None:
+    output_path = output_path / video_path.stem
+
+    images_raw_path = output_path / "images_raw"
+    images_draw_path = output_path / "images_draw"
+
+    images_raw_path.mkdir(parents=True, exist_ok=True)
+    images_draw_path.mkdir(parents=True, exist_ok=True)
+
     # copy video file
-    video_path = f"{video_dir}/{path.split('/')[-1]}"
-    shutil.copyfile(path, video_path)
+    shutil.copyfile(video_path, output_path / video_path.name)
 
     # convert video to images
-    det_cfg = cfg['detection']
-    if 0 in STAGES:
-        convert_to_images(video_path, images_raw_path, sampling=det_cfg['sampling'])
-    
-    # detect balls using YOLO
-    if 1 in STAGES:
-        detect_cmd = f"python3 yolov5/detect.py --weights models/{det_cfg['model_weights']} --conf 0.1 --source {images_raw_path}/ --img-size {det_cfg['image_size']} --save-img --augment"
-        os.system(detect_cmd)
+    print("Converting the video to images...")
+    convert_to_images(video_path, images_raw_path, video_stride=1)
 
-    # draw trajectories
-    if 2 in STAGES:
-        draw_cfg = cfg['drawing']
-        draw_trajectories(f'{video_dir}/results.json', images_raw_path+'/', images_draw_path+'/', 
-                        ball_conf=draw_cfg['min_confidence'], max_distance=draw_cfg['max_distance'],
-                        style=draw_cfg['style'], tail=draw_cfg['tail'], smooth=draw_cfg['smoothing'])
+    # detect balls using YOLO
+    detect_cmd = [
+        "python3",
+        "yolov5/detect.py",
+        "--weights",
+        "models/yolov5s_basketball.pt",
+        "--source",
+        f"{images_raw_path}/",
+        "--save-txt",
+        "--save-conf",
+        "--nosave",
+        "--project",
+        f"{output_path.parent}",
+        "--name",
+        f"{video_path.stem}",
+        "--exist-ok",
+        "--device",
+        f"{device}",
+    ]
+    subprocess.run(detect_cmd, check=True)
+
+    # draw trajectory
+    trajectory = draw_trajectory(
+        output_path / "labels",
+        images_raw_path,
+        images_draw_path,
+        ball_conf=0.5,
+        max_distance=30,
+    )
+    trajectory = np.array(trajectory)
+    np.savetxt(output_path / "trajectory.txt", trajectory, fmt="%4d %4d")
 
     # make video
-    if 3 in STAGES:
-        convert_to_video(images_draw_path, f"{video_dir}/output_{video_name}.avi", fps=cfg['output']['fps'])
-    
-    if cfg['output']['clean_data']:
-        os.remove(path)
+    convert_to_video(
+        images_draw_path,
+        output_path / f"output_{video_path.stem}.avi",
+        fps=fps,
+    )
+
+    if clean:
+        shutil.rmtree(output_path / "images_raw")
+        shutil.rmtree(output_path / "images_draw")
+        (output_path / video_path.name).unlink()
+
 
 if __name__ == "__main__":
-    # PATH = 'processed_data/163342AA.MP4'
-    with open('configs/precise.json') as f:
-        cfg = json.load(f)
+    parser = argparse.ArgumentParser()
 
-    VIDEOS_PATH = cfg['videos_path']
-    filenames = glob.glob(f'{VIDEOS_PATH}*.MP4')
-    
-    for idx, video_filename in enumerate(filenames):
-        video_filename = video_filename.replace('\\', '/')
-        print(f"VIDEO {idx+1}/{len(filenames)}\n")
-        process_video(video_filename, cfg)
+    parser.add_argument("video", type=str, default=None, help="Path to the video file.")
+    parser.add_argument(
+        "-o", "--output", type=str, default="output", help="Output directory."
+    )
+    parser.add_argument(
+        "-d",
+        "--device",
+        type=str,
+        default="cuda:0",
+        help="Device to be used by YOLOv5 model.",
+    )
+    parser.add_argument("--fps", type=int, default=30, help="FPS of the output video.")
+    parser.add_argument(
+        "-c",
+        "--clean",
+        action="store_true",
+        default=True,
+        help="Remove saved intermediate files.",
+    )
 
+    args = parser.parse_args()
+
+    process_video(
+        Path(args.video),
+        Path(args.output),
+        args.device,
+        args.fps,
+        args.clean,
+    )

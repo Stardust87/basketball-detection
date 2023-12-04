@@ -1,31 +1,31 @@
+from pathlib import Path
+
 import cv2
-import os
-import numpy as np
 
-def convert_to_images(video_path, output_path, current_frame=0, sampling=0):
-    print("Converting the video to images...")
-    capture = cv2.VideoCapture(video_path)
-    fps = capture.get(cv2.CAP_PROP_FPS)
 
+def convert_to_images(
+    video_path: Path, output_path: Path, video_stride: int = 1
+) -> None:
+    """
+    Converts a video file to a sequence of images.
+
+    Args:
+        video_path: Path to the video file.
+        output_path: Path to the directory where the images will be saved.
+        video_stride: The stride of the video frames to be saved as images.
+    """
+    if video_stride < 1:
+        raise ValueError("Video stride must be positive.")
+
+    capture = cv2.VideoCapture(str(video_path))
+
+    current_frame = 0
     while capture.isOpened():
         ret, image = capture.read()
-        if image is None:
+        if not ret:
             break
 
-        if sampling > 0:
-            if current_frame % (sampling + 1) == 0:
-                cv2.imwrite(f'{output_path}/img{current_frame:04d}.jpg',image)    
-        else:
-            cv2.imwrite(f'{output_path}/img{current_frame:04d}.jpg',image)
+        if current_frame % video_stride == 0:
+            cv2.imwrite(str(output_path / f"{current_frame:05d}.jpg"), image)
+
         current_frame += 1
-    
-    return current_frame
-
-if __name__ == "__main__":
-    videoname = 'michal1'
-    video_path = f'data/{videoname}/input.MP4'
-    output_path = f'data/{videoname}/images_raw'
-    if not os.path.exists(output_path):
-        os.makedirs(output_path)
-    convert_to_images(video_path, output_path)
-
