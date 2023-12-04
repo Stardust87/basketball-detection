@@ -94,7 +94,6 @@ if __name__ == "__main__":
         "-c",
         "--clean",
         action="store_true",
-        default=True,
         help="Remove saved intermediate files.",
     )
 
